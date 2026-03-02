@@ -435,6 +435,66 @@
             border-radius: 10px;
             background: var(--surface2);
         }
+
+        /* ── Log panel ───────────────────────────────────────────── */
+        .log-entry {
+            display: flex;
+            gap: 6px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.76rem;
+            line-height: 1.4;
+            border-left: 2px solid var(--border);
+        }
+
+        .log-entry.round {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .log-entry.move-ok {
+            border-color: var(--up);
+            color: var(--up);
+        }
+
+        .log-entry.move-err {
+            border-color: var(--down);
+            color: var(--down);
+        }
+
+        .log-entry.elim {
+            border-color: var(--down);
+            color: var(--down);
+        }
+
+        .log-entry.info {
+            border-color: var(--muted);
+            color: var(--muted);
+        }
+
+        .log-time {
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+
+        .btn-export {
+            width: 100%;
+            margin-top: 8px;
+            padding: 6px;
+            font-size: 0.78rem;
+            border-radius: 8px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-export:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
     </style>
 </head>
 
@@ -528,10 +588,15 @@
                     </div>
                 </div>
                 <div class="glass sidebar-card">
-                    <h3>📜 Log</h3>
-                    <div id="game-log"
-                        style="max-height:180px;overflow-y:auto;font-size:0.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <h3 style="margin:0;">📜 Log da Partida</h3>
+                        <a href="/api/log" target="_blank" title="Ver log completo do servidor"
+                            style="font-size:0.75rem;color:var(--muted);text-decoration:none;">🗒 servidor</a>
                     </div>
+                    <div id="game-log"
+                        style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+                    </div>
+                    <button class="btn-export" onclick="exportLog()">⬇ Exportar log (.txt)</button>
                 </div>
             </div>
         </div>
@@ -544,10 +609,14 @@
             <h2 id="result-title">Fim de Jogo!</h2>
             <p id="result-subtitle"></p>
             <div class="score-list" id="result-scores"></div>
-            <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;">
-                <a href="/" class="btn btn-secondary">← Lobby</a>
-                <a href="/scoreboard" class="btn btn-primary">Placar →</a>
+            <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <!-- Play Again — visível apenas para o host -->
+                <button class="btn btn-primary" id="btn-play-again" style="display:none;" onclick="playAgain()">
+                    🔄 Jogar Novamente
+                </button>
+                <a href="/scoreboard" class="btn btn-secondary">Placar →</a>
             </div>
+            <p style="margin-top:12px;font-size:0.78rem;color:var(--muted);" id="waiting-restart"></p>
         </div>
     </div>
 
@@ -605,18 +674,38 @@
         $hdrPlayer.textContent = playerName;
         if (!isHost) $btnStart.style.display = 'none';
 
-        // ── Helpers ──────────────────────────────────────────────────
+        // ── Log helpers ───────────────────────────────────────────────
+        const _logEntries = [];  // full text for export
+
+        function addLog(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+            _logEntries.push(`[${time}] ${msg}`);
+            const row = document.createElement('div');
+            row.className = `log-entry ${type}`;
+            row.innerHTML = `<span class="log-time">${time}</span><span>${msg}</span>`;
+            $log.prepend(row);
+            if ($log.children.length > 80) $log.lastChild.remove();
+        }
+
+        window.exportLog = function () {
+            const text = _logEntries.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `memory-arrows-${roomId}-${Date.now()}.txt`;
+            a.click();
+        };
+
+        window.playAgain = function () {
+            client._send({ type: 'restart_game' });
+            document.getElementById('btn-play-again').disabled = true;
+            document.getElementById('waiting-restart').textContent = 'Aguardando reiniciar...';
+        };
+
         function toast(msg, type = 'info', ms = 2500) {
             const el = document.getElementById('toast');
             el.textContent = msg; el.className = `show ${type}`;
             setTimeout(() => el.className = '', ms);
-        }
-
-        function addLog(msg) {
-            const row = document.createElement('div');
-            row.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            $log.prepend(row);
-            if ($log.children.length > 40) $log.lastChild.remove();
         }
 
         function showPhase(game) {
@@ -749,7 +838,7 @@
             .on('player_joined', msg => {
                 renderLobby(msg.room.players);
                 renderSidebar(msg.room.players);
-                addLog(`${msg.player.name} entrou`);
+                addLog(`${msg.player.name} entrou`, 'info');
             })
             .on('error', msg => toast(msg.message, 'error'))
 
@@ -760,7 +849,7 @@
                 $seqRow.innerHTML = '';
                 $seqLabel.textContent = '';
                 renderSidebar(msg.room.players);
-                addLog('Jogo iniciado!');
+                addLog('Jogo iniciado! Ordem: ' + (msg.turn_order || []).length + ' jogadores', 'info');
                 toast('Jogo iniciado!', 'success');
             })
 
@@ -776,7 +865,8 @@
                 const isMe = msg.current_player_id === playerId;
                 setTurnBanner(isMe, msg.current_player_name);
                 $progressMsg.textContent = `Rodada ${msg.round} — sequência de ${msg.sequence_length} seta(s)`;
-                addLog(`── Rodada ${msg.round}: vez de ${msg.current_player_name}`);
+                const seq = msg.sequence ? msg.sequence.join(' → ') : '';
+                addLog(`── R${msg.round}: ${msg.current_player_name} | seq: ${seq}`, 'round');
             })
 
             // ── Sequence display (one arrow at a time) ──────────────────
@@ -796,7 +886,7 @@
                 showBigArrow(msg.arrow);
                 // Rebuild chips with current arrow highlighted
                 buildSequenceRow(fullSequence, fullSequence.length - 1);
-                addLog(`Seta ${msg.position}/${msg.total}: ${ARROW_MAP[msg.arrow]}`);
+                addLog(`  ${msg.position}/${msg.total}: ${ARROW_MAP[msg.arrow]}`, 'info');
             })
             .on('clear_arrow', () => {
                 // Remove highlight from all chips when arrow clears
@@ -863,11 +953,11 @@
 
             // ── Round result ─────────────────────────────────────────────
             .on('move_correct', msg => {
-                addLog(`✅ ${msg.player_name} acertou a rodada ${msg.round}`);
+                addLog(`ACERTO: ${msg.player_name} — rodada ${msg.round}`, 'move-ok');
                 toast(`${msg.player_name} acertou!`, 'success', 1500);
             })
             .on('player_eliminated', msg => {
-                addLog(`💀 ${msg.player.name} foi eliminado (rodada ${msg.round})`);
+                addLog(`ELIMINADO: ${msg.player.name} na rodada ${msg.round}`, 'elim');
                 toast(`${msg.player.name} eliminado!`, 'error');
             })
             .on('round_result', msg => {
@@ -895,10 +985,48 @@
           <span>${['🥇', '🥈', '🥉'][i] || `${i + 1}.`} ${p.name}</span>
           <span style="font-weight:700;color:var(--accent)">${p.score} pts</span>
         </div>`).join('');
+                // Show Play Again for host, waiting message for non-host
+                const $btnPA = document.getElementById('btn-play-again');
+                if (isHost) {
+                    $btnPA.style.display = 'block';
+                    $btnPA.disabled = false;
+                } else {
+                    document.getElementById('waiting-restart').textContent =
+                        'Aguardando o host reiniciar a partida...';
+                }
+                const winTxt = winner ? `Vencedor: ${winner.name}` : 'Empate';
+                addLog(`=== FIM: ${winTxt} | ${msg.total_rounds} rodadas ===`, 'round');
                 document.getElementById('result-overlay').classList.add('show');
             })
             .on('player_disconnected', msg => {
-                addLog(`⚠️ ${msg.player_name} desconectou`);
+                addLog(`DESCONECTOU: ${msg.player_name}`, 'move-err');
+            })
+
+            // ── Room reset (Play Again) ──────────────────────────────────
+            .on('room_reset', msg => {
+                // Dismiss result overlay
+                document.getElementById('result-overlay').classList.remove('show');
+                document.getElementById('btn-play-again').style.display = 'none';
+                document.getElementById('waiting-restart').textContent = '';
+
+                // Reset game state
+                myTurn = false;
+                fullSequence = [];
+                stopTimer();
+                setArrowsEnabled(false);
+                $inputSec.classList.remove('visible');
+                $round.textContent = '—';
+                $seqRow.innerHTML = '';
+                $seqLabel.textContent = '';
+                clearBigArrow();
+                $turnBanner.className = '';
+
+                // Go back to lobby phase
+                showPhase(false);
+                renderLobby(msg.room.players);
+                renderSidebar(msg.room.players);
+                addLog(`=== Nova partida iniciada por ${msg.requested_by} ===`, 'round');
+                toast(`${msg.requested_by} reiniciou! Prepare-se!`, 'success', 3000);
             })
 
             // Lamport display

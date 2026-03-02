@@ -64,14 +64,26 @@ class RoomManager:
             if r.status == RoomStatus.LOBBY
         ]
 
-    def cleanup_empty_rooms(self):
-        to_delete = [
-            rid for rid, room in self._rooms.items()
-            if all(p.status == PlayerStatus.DISCONNECTED for p in room.players.values())
-        ]
-        for rid in to_delete:
-            del self._rooms[rid]
-            print(f"[RoomManager] Sala {rid} removida (vazia).")
+    def reset_room(self, room_id: str, requested_by: str) -> Room:
+        """
+        Reinicia uma sala após o fim da partida para o status LOBBY.
+        Todos os jogadores não-desconectados voltam para WAITING.
+        A sequência e o round são zerados.
+        """
+        room = self._rooms.get(room_id)
+        if not room:
+            raise ValueError(f"Sala '{room_id}' não encontrada.")
+        room.status = RoomStatus.LOBBY
+        room.current_round = 0
+        room.sequence = []
+        room.player_turn_order = []
+        for player in room.players.values():
+            if player.status != PlayerStatus.DISCONNECTED:
+                player.status = PlayerStatus.WAITING
+                player.score = 0
+                player.rounds_survived = 0
+        print(f"[RoomManager] Sala {room_id} reiniciada por {requested_by}")
+        return room
 
 
 room_manager = RoomManager()

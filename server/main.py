@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 
 from db import database
 from game.engine import start_game
+from game.game_logger import log_event
 from game.models import Player, PlayerStatus
 from game.room_manager import room_manager
 from middleware.circuit_breaker import db_circuit_breaker
@@ -117,6 +118,24 @@ async def status():
         },
         "registered_services": name_node.list_healthy(),
     })
+
+
+@app.get("/api/log")
+async def get_log():
+    """
+    Retorna o arquivo de log do dia em texto puro (JSON-lines).
+    Acesse http://<ip>:8000/api/log para inspecionar ações durante testes.
+    """
+    import os
+    from datetime import datetime
+    from fastapi.responses import PlainTextResponse
+    log_dir  = os.path.join(os.path.dirname(__file__), "logs")
+    log_path = os.path.join(log_dir, f"game_{datetime.now().strftime('%Y%m%d')}.log")
+    if not os.path.exists(log_path):
+        return PlainTextResponse("Nenhum log encontrado para hoje.")
+    with open(log_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return PlainTextResponse(content, media_type="text/plain; charset=utf-8")
 
 
 # ─────────────────────────────────────────────
@@ -225,6 +244,37 @@ async def _handle_message(player: Player, msg: dict, websocket: WebSocket):
             return
         # Inicia o jogo em background (não bloqueia o loop de mensagens)
         asyncio.create_task(start_game(room))
+
+    elif msg_type == "restart_game":
+        room = room_manager.get_room_by_player(player.id)
+        if not room:
+            return
+        if room.host_id != player.id:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Apenas o host pode reiniciar o jogo.",
+                "lamport_ts": server_clock.tick(),
+            }))
+            return
+        try:
+            room = room_manager.reset_room(room.id, player.name)
+            log_event("room_reset", room.id, {
+                "requested_by": player.name,
+                "players": [p.name for p in room.players.values()],
+            }, server_clock.tick())
+            from game.engine import broadcast_all
+            await broadcast_all(room, {
+                "type": "room_reset",
+                "room": room.to_dict(),
+                "requested_by": player.name,
+                "lamport_ts": server_clock.tick(),
+            })
+        except ValueError as e:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": str(e),
+                "lamport_ts": server_clock.tick(),
+            }))
 
     elif msg_type == "ping":
         await websocket.send_text(json.dumps({
