@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MemoryArrows — Jogo da Memória Distribuído</title>
-  <meta name="description" content="Jogo da memória multiplayer com BitDogLab. Conecte sua placa e teste sua memória contra outros jogadores em tempo real." />
+  <meta name="description"
+    content="Jogo da memória multiplayer com BitDogLab. Conecte sua placa e teste sua memória contra outros jogadores em tempo real." />
   <link rel="stylesheet" href="/static/css/style.css" />
   <style>
     .hero {
@@ -16,9 +18,11 @@
       padding: 40px 20px;
       gap: 48px;
     }
+
     .logo-area {
       text-align: center;
     }
+
     .logo-arrows {
       display: flex;
       gap: 12px;
@@ -27,17 +31,44 @@
       margin-bottom: 16px;
       animation: float 3s ease-in-out infinite;
     }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-8px); }
-    }
-    .logo-arrows span { filter: drop-shadow(0 0 12px currentColor); }
-    .logo-arrows span:nth-child(1) { color: var(--up); }
-    .logo-arrows span:nth-child(2) { color: var(--down); }
-    .logo-arrows span:nth-child(3) { color: var(--left); }
-    .logo-arrows span:nth-child(4) { color: var(--right); }
 
-    .tagline { color: var(--muted); margin-top: 8px; font-size: 1.1rem; }
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .logo-arrows span {
+      filter: drop-shadow(0 0 12px currentColor);
+    }
+
+    .logo-arrows span:nth-child(1) {
+      color: var(--up);
+    }
+
+    .logo-arrows span:nth-child(2) {
+      color: var(--down);
+    }
+
+    .logo-arrows span:nth-child(3) {
+      color: var(--left);
+    }
+
+    .logo-arrows span:nth-child(4) {
+      color: var(--right);
+    }
+
+    .tagline {
+      color: var(--muted);
+      margin-top: 8px;
+      font-size: 1.1rem;
+    }
 
     .cards-row {
       display: flex;
@@ -45,7 +76,12 @@
       width: 100%;
       max-width: 720px;
     }
-    @media (max-width: 600px) { .cards-row { flex-direction: column; } }
+
+    @media (max-width: 600px) {
+      .cards-row {
+        flex-direction: column;
+      }
+    }
 
     .action-card {
       flex: 1;
@@ -54,7 +90,10 @@
       flex-direction: column;
       gap: 20px;
     }
-    .action-card h2 { font-size: 1.3rem; }
+
+    .action-card h2 {
+      font-size: 1.3rem;
+    }
 
     .divider {
       display: flex;
@@ -63,7 +102,9 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
-    .divider::before, .divider::after {
+
+    .divider::before,
+    .divider::after {
       content: '';
       flex: 1;
       height: 1px;
@@ -85,6 +126,7 @@
       justify-content: center;
       max-width: 720px;
     }
+
     .feature-pill {
       padding: 8px 16px;
       border-radius: 999px;
@@ -96,8 +138,10 @@
       align-items: center;
       gap: 6px;
     }
+
     .feature-pill .dot {
-      width: 7px; height: 7px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--accent);
     }
@@ -117,10 +161,73 @@
       border: 1px solid var(--border);
       backdrop-filter: blur(12px);
     }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .status-dot.connected { background: var(--up); box-shadow: 0 0 8px var(--up); }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .status-dot.connected {
+      background: var(--up);
+      box-shadow: 0 0 8px var(--up);
+    }
+
+    /* LAN share card */
+    .lan-card {
+      width: 100%;
+      max-width: 720px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .lan-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .lan-info {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .lan-info p {
+      font-size: 0.82rem;
+      margin-top: 2px;
+    }
+
+    .lan-url {
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      word-break: break-all;
+    }
+
+    .btn-copy {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .btn-copy:hover {
+      background: rgba(108, 99, 255, 0.2);
+      border-color: var(--accent);
+    }
   </style>
 </head>
+
 <body>
   <div id="status-bar">
     <div class="status-dot" id="conn-dot"></div>
@@ -169,16 +276,38 @@
       </div>
     </div>
 
-    <!-- Features -->
-    <div class="features">
-      <div class="feature-pill"><div class="dot"></div>WebSocket RPC</div>
-      <div class="feature-pill"><div class="dot" style="background:var(--up)"></div>Relógio de Lamport</div>
-      <div class="feature-pill"><div class="dot" style="background:var(--right)"></div>Circuit Breaker</div>
-      <div class="feature-pill"><div class="dot" style="background:var(--left)"></div>Nó de Nomes</div>
-      <div class="feature-pill"><div class="dot" style="background:var(--accent2)"></div>BitDogLab Ready</div>
+    <!-- LAN Share Card -->
+    <div class="glass lan-card" id="lan-card" style="display:none;">
+      <div class="lan-icon">📡</div>
+      <div class="lan-info">
+        <h3 style="font-size:0.95rem;">Acesso pela rede local (Wi-Fi)</h3>
+        <p>Abra este link no segundo computador:</p>
+        <div class="lan-url" id="lan-url">carregando...</div>
+      </div>
+      <button class="btn-copy" id="btn-copy-url" onclick="copyLanUrl()">📋 Copiar</button>
     </div>
 
-    <a href="/scoreboard" style="color:var(--muted);font-size:0.9rem;text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:2px;">
+    <!-- Features -->
+    <div class="features">
+      <div class="feature-pill">
+        <div class="dot"></div>WebSocket RPC
+      </div>
+      <div class="feature-pill">
+        <div class="dot" style="background:var(--up)"></div>Relógio de Lamport
+      </div>
+      <div class="feature-pill">
+        <div class="dot" style="background:var(--right)"></div>Circuit Breaker
+      </div>
+      <div class="feature-pill">
+        <div class="dot" style="background:var(--left)"></div>Nó de Nomes
+      </div>
+      <div class="feature-pill">
+        <div class="dot" style="background:var(--accent2)"></div>BitDogLab Ready
+      </div>
+    </div>
+
+    <a href="/scoreboard"
+      style="color:var(--muted);font-size:0.9rem;text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:2px;">
       Ver Placar Histórico →
     </a>
   </div>
@@ -193,9 +322,9 @@
     let playerName = '';
     let playerId = GameWSClient.generatePlayerId();
 
-    const connDot   = document.getElementById('conn-dot');
+    const connDot = document.getElementById('conn-dot');
     const connLabel = document.getElementById('conn-label');
-    const nameSec   = document.getElementById('name-section');
+    const nameSec = document.getElementById('name-section');
     const actionSec = document.getElementById('action-section');
 
     // ── Toast ──────────────────────────────────────────────────
@@ -206,6 +335,34 @@
       setTimeout(() => el.className = '', ms);
     }
 
+    // ── LAN URL discovery ──────────────────────────────────────
+    async function fetchLanUrl() {
+      try {
+        const r = await fetch('/api/discover');
+        const data = await r.json();
+        const svc = (data.services || [])[0];
+        if (svc) {
+          // Build HTTP URL from the server's local IP
+          const url = svc.http_url;
+          document.getElementById('lan-url').textContent = url;
+          document.getElementById('lan-card').style.display = 'flex';
+        }
+      } catch {
+        // If discover fails, fallback to current page URL
+        document.getElementById('lan-url').textContent = location.href;
+        document.getElementById('lan-card').style.display = 'flex';
+      }
+    }
+
+    window.copyLanUrl = function () {
+      const url = document.getElementById('lan-url').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('btn-copy-url');
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000);
+      });
+    };
+
     // ── Step 1: confirm name ───────────────────────────────────
     document.getElementById('btn-confirm-name').addEventListener('click', () => {
       const val = document.getElementById('player-name').value.trim();
@@ -213,6 +370,7 @@
       playerName = val;
       nameSec.style.display = 'none';
       actionSec.style.display = 'block';
+      fetchLanUrl();   // show LAN share card
       connectWS();
     });
     document.getElementById('player-name').addEventListener('keydown', e => {
@@ -270,4 +428,5 @@
     });
   </script>
 </body>
+
 </html>

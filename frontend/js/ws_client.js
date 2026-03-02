@@ -20,9 +20,19 @@ export class GameWSClient {
         this._maxReconnects = 3;
     }
 
-    /** Gera um ID único para este cliente. */
+    /** Gera um ID único para este cliente.
+     *  crypto.randomUUID() só funciona em HTTPS/localhost.
+     *  Aqui usamos crypto.getRandomValues() que funciona em HTTP também. */
     static generatePlayerId() {
-        return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+        try {
+            // Funciona em HTTP e HTTPS (não precisa de secure context)
+            const arr = new Uint8Array(8);
+            crypto.getRandomValues(arr);
+            return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+        } catch {
+            // Fallback absoluto para ambientes sem crypto
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        }
     }
 
     /** Conecta ao servidor WebSocket. */
