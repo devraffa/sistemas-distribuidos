@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemoryArrows — Jogo da Memória Distribuído</title>
+  <meta name="description" content="Jogo da memória multiplayer com BitDogLab. Conecte sua placa e teste sua memória contra outros jogadores em tempo real." />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 48px;
+    }
+    .logo-area {
+      text-align: center;
+    }
+    .logo-arrows {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+    .logo-arrows span { filter: drop-shadow(0 0 12px currentColor); }
+    .logo-arrows span:nth-child(1) { color: var(--up); }
+    .logo-arrows span:nth-child(2) { color: var(--down); }
+    .logo-arrows span:nth-child(3) { color: var(--left); }
+    .logo-arrows span:nth-child(4) { color: var(--right); }
+
+    .tagline { color: var(--muted); margin-top: 8px; font-size: 1.1rem; }
+
+    .cards-row {
+      display: flex;
+      gap: 24px;
+      width: 100%;
+      max-width: 720px;
+    }
+    @media (max-width: 600px) { .cards-row { flex-direction: column; } }
+
+    .action-card {
+      flex: 1;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .action-card h2 { font-size: 1.3rem; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    #room-code-input {
+      text-align: center;
+      font-size: 1.4rem;
+      letter-spacing: 0.2em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .features {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 720px;
+    }
+    .feature-pill {
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .feature-pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    #status-bar {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .status-dot.connected { background: var(--up); box-shadow: 0 0 8px var(--up); }
+  </style>
+</head>
+<body>
+  <div id="status-bar">
+    <div class="status-dot" id="conn-dot"></div>
+    <span id="conn-label">Desconectado</span>
+  </div>
+
+  <div class="hero">
+    <div class="logo-area">
+      <div class="logo-arrows">
+        <span>↑</span><span>↓</span><span>←</span><span>→</span>
+      </div>
+      <h1>MemoryArrows</h1>
+      <p class="tagline">Jogo da memória distribuído · BitDogLab × Web</p>
+    </div>
+
+    <div id="name-section" style="width:100%;max-width:720px;">
+      <div class="glass action-card" style="align-items:center;text-align:center;">
+        <h2>Como quer ser chamado?</h2>
+        <div class="input-group" style="width:100%;max-width:320px;">
+          <input type="text" id="player-name" placeholder="Seu nome" maxlength="20" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" id="btn-confirm-name" style="min-width:200px;">
+          Confirmar →
+        </button>
+      </div>
+    </div>
+
+    <div id="action-section" style="display:none;width:100%;max-width:720px;">
+      <div class="cards-row">
+        <!-- Criar sala -->
+        <div class="glass action-card">
+          <h2>🎮 Criar Sala</h2>
+          <p>Seja o host e convide seus amigos com o código da sala.</p>
+          <button class="btn btn-primary" id="btn-create" style="width:100%;">Criar Sala</button>
+        </div>
+
+        <!-- Entrar em sala -->
+        <div class="glass action-card">
+          <h2>🔗 Entrar em Sala</h2>
+          <p>Insira o código da sala para se juntar à partida.</p>
+          <div class="input-group">
+            <input type="text" id="room-code-input" placeholder="ABC123" maxlength="6" />
+          </div>
+          <button class="btn btn-secondary" id="btn-join" style="width:100%;">Entrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature-pill"><div class="dot"></div>WebSocket RPC</div>
+      <div class="feature-pill"><div class="dot" style="background:var(--up)"></div>Relógio de Lamport</div>
+      <div class="feature-pill"><div class="dot" style="background:var(--right)"></div>Circuit Breaker</div>
+      <div class="feature-pill"><div class="dot" style="background:var(--left)"></div>Nó de Nomes</div>
+      <div class="feature-pill"><div class="dot" style="background:var(--accent2)"></div>BitDogLab Ready</div>
+    </div>
+
+    <a href="/scoreboard" style="color:var(--muted);font-size:0.9rem;text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:2px;">
+      Ver Placar Histórico →
+    </a>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module">
+    import { GameWSClient } from '/static/js/ws_client.js';
+
+    const WS_HOST = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+    let client = null;
+    let playerName = '';
+    let playerId = GameWSClient.generatePlayerId();
+
+    const connDot   = document.getElementById('conn-dot');
+    const connLabel = document.getElementById('conn-label');
+    const nameSec   = document.getElementById('name-section');
+    const actionSec = document.getElementById('action-section');
+
+    // ── Toast ──────────────────────────────────────────────────
+    function toast(msg, type = 'info', ms = 3000) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `show ${type}`;
+      setTimeout(() => el.className = '', ms);
+    }
+
+    // ── Step 1: confirm name ───────────────────────────────────
+    document.getElementById('btn-confirm-name').addEventListener('click', () => {
+      const val = document.getElementById('player-name').value.trim();
+      if (!val) { toast('Digite seu nome!', 'error'); return; }
+      playerName = val;
+      nameSec.style.display = 'none';
+      actionSec.style.display = 'block';
+      connectWS();
+    });
+    document.getElementById('player-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-confirm-name').click();
+    });
+
+    // ── Step 2: connect WebSocket ──────────────────────────────
+    function connectWS() {
+      client = new GameWSClient(WS_HOST);
+      client
+        .on('identified', () => {
+          connDot.classList.add('connected');
+          connLabel.textContent = 'Conectado';
+          toast('Conectado ao servidor!', 'success');
+        })
+        .on('disconnected', () => {
+          connDot.classList.remove('connected');
+          connLabel.textContent = 'Reconectando...';
+        })
+        .on('reconnect_failed', () => {
+          connLabel.textContent = 'Offline';
+          toast('Falha na reconexão', 'error');
+        })
+        .on('room_created', (msg) => {
+          sessionStorage.setItem('room_id', msg.room.id);
+          sessionStorage.setItem('player_id', playerId);
+          sessionStorage.setItem('player_name', playerName);
+          sessionStorage.setItem('is_host', 'true');
+          window.location.href = '/game';
+        })
+        .on('player_joined', (msg) => {
+          sessionStorage.setItem('room_id', msg.room.id);
+          sessionStorage.setItem('player_id', playerId);
+          sessionStorage.setItem('player_name', playerName);
+          sessionStorage.setItem('is_host', 'false');
+          window.location.href = '/game';
+        })
+        .on('error', (msg) => toast(msg.message, 'error'));
+
+      client.connect(playerId, playerName);
+    }
+
+    // ── Actions ────────────────────────────────────────────────
+    document.getElementById('btn-create').addEventListener('click', () => {
+      if (!client) return;
+      client.createRoom();
+    });
+    document.getElementById('btn-join').addEventListener('click', () => {
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+      if (!code || code.length < 4) { toast('Código inválido', 'error'); return; }
+      client.joinRoom(code);
+    });
+    document.getElementById('room-code-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-join').click();
+    });
+  </script>
+</body>
+</html>

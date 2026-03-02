@@ -1,191 +1,143 @@
-
-# Trabalho final de sistemas distribuidos
-# Sync-Beat -- Documento do Projeto
-
-## 1. Descrição Geral do Projeto
-
-O Sync-Beat é um sistema distribuído competitivo no qual um servidor
-central, denominado **Orquestrador**, emite uma sequência rítmica de
-símbolos (comandos) que devem ser executados pelos nós clientes
-(Jogadores) com precisão de milissegundos.
-
-A proposta do sistema é avaliar não apenas a capacidade de reação do
-jogador, mas principalmente a correta ordenação e validação de eventos
-em um ambiente distribuído sujeito a latência e variações de rede.
-
-### 1.1 Analogia Conceitual
-
-O funcionamento do sistema pode ser comparado a jogos rítmicos, nos
-quais o jogador deve pressionar uma tecla no momento exato em que um
-comando é exibido na tela.
-
-No Sync-Beat:
-
--   O servidor envia um sinal (por exemplo, a letra 'W').
--   O cliente exibe o sinal ao jogador.
--   O jogador possui uma janela de oportunidade (por exemplo, 500 ms)
-    para reagir.
-
-O principal desafio técnico consiste em garantir que, caso dois
-jogadores realizem a ação simultaneamente, o servidor seja capaz de
-determinar de forma justa quem foi mais preciso, independentemente da
-qualidade da conexão de cada participante.
-
-------------------------------------------------------------------------
-
-## 2. Arquitetura do Sistema
-
-A arquitetura do sistema está organizada em três pilares principais:
-
-### 2.1 Camada de Apresentação -- Front-end (React)
-
-Responsabilidades:
-
--   Exibir os símbolos na interface do usuário.
--   Capturar eventos de teclado.
--   Gerar o timestamp local.
--   Atualizar e anexar o contador do Relógio Lógico de Lamport no
-    momento exato do clique.
--   Enviar os dados ao servidor por meio do middleware.
-
-------------------------------------------------------------------------
-
-### 2.2 Camada de Lógica e Middleware -- Servidor (Node.js)
-
-#### a) Orquestrador
-
--   Define qual será o próximo comando.
--   Determina o momento exato de sua exibição.
-
-#### b) Middleware (Socket.io)
-
--   Gerencia a comunicação assíncrona entre múltiplos clientes.
--   Controla conexões, reconexões e transmissão de eventos em tempo
-    real.
-
-#### c) Árbitro de Concorrência
-
--   Recebe os eventos enviados pelos jogadores.
--   Compara os relógios lógicos.
--   Determina o vencedor da rodada com base em critérios de ordenação
-    lógica.
-
-------------------------------------------------------------------------
-
-### 2.3 Camada de Persistência -- Banco de Dados (SQL)
-
-Responsável por:
-
--   Armazenar o ranking global.
--   Registrar logs detalhados dos eventos.
--   Garantir rastreabilidade e auditoria do funcionamento da
-    sincronização.
-
-------------------------------------------------------------------------
-
-## 3. Atendimento aos Requisitos da Disciplina
-
-### 3.1 Comunicação e Middleware (RPC/RMI e Abstração)
-
-Um dos requisitos do projeto é que o cliente não manipule diretamente
-detalhes de rede, como IP, porta ou buffers.
-
-Para atender a esse requisito, foi adotado o Socket.io como middleware
-de comunicação.
-
-No front-end, o cliente apenas realiza chamadas como:
-
-    socket.emit('enviar_clique', dados)
-
-Essa abordagem simula o conceito de RPC (Remote Procedure Call), pois,
-para o cliente, a operação aparenta ser uma chamada local. O middleware
-é responsável por serializar os dados (em formato JSON), transmiti-los
-ao servidor e gerenciar a comunicação subjacente.
-
-Dessa forma, garante-se a abstração completa da camada de rede.
-
-------------------------------------------------------------------------
-
-## 4. Características de Sistemas Distribuídos
-
-### 4.1 Sincronização -- Relógios Lógicos de Lamport
-
-#### Problema
-
-Em ambientes reais, a latência de rede pode variar significativamente.
-Caso o servidor utilizasse apenas o tempo de chegada dos eventos,
-jogadores com conexões mais rápidas seriam favorecidos.
-
-#### Solução
-
-Foi implementado o Relógio Lógico de Lamport.
-
-Cada evento enviado pelo cliente contém um número sequencial (L), que
-representa sua posição lógica na linha do tempo distribuída.
-
-Em situações de condição de corrida (eventos muito próximos), o servidor
-utiliza o valor do relógio lógico para determinar a ordem correta dos
-acontecimentos, garantindo justiça e consistência.
-
-------------------------------------------------------------------------
-
-### 4.2 Tolerância a Falhas (Disponibilidade)
-
-O sistema foi projetado para suportar falhas parciais sem comprometer
-completamente sua operação.
-
--   O Socket.io possui mecanismo nativo de heartbeat (batimento
-    cardíaco).
--   Em caso de instabilidade de conexão, são realizadas tentativas
-    automáticas de reconexão.
-
-No servidor:
-
--   São utilizados blocos de tratamento de exceção (try/catch) na
-    conexão com o banco de dados.
--   Caso o banco de dados fique temporariamente indisponível, o servidor
-    principal continua operando.
-
-Essa abordagem assegura maior disponibilidade e resiliência do sistema.
-
-------------------------------------------------------------------------
-
-### 4.3 Descoberta de Serviços (Transparência de Localização)
-
-#### Problema
-
-Em sistemas distribuídos reais, o endereço IP do servidor pode mudar
-devido a reinicializações, migrações ou escalabilidade. Caso o endereço
-esteja fixo no código do cliente, o sistema se tornaria frágil.
-
-#### Solução
-
-Foi proposta a implementação de um Service Registry simplificado.
-
-Funcionamento:
-
-1.  O servidor Node.js, ao iniciar, registra seu endereço em um endpoint
-    ou arquivo conhecido.
-2.  O cliente React, antes de iniciar a sessão, consulta esse catálogo
-    para descobrir o endereço e a porta atual do servidor.
-
-Essa estratégia garante transparência de localização e prepara o sistema
-para cenários de escalabilidade.
-
-------------------------------------------------------------------------
-
-## 5. Considerações Finais
-
-O Sync-Beat constitui uma aplicação prática de conceitos fundamentais de
-Sistemas Distribuídos, incluindo:
-
--   Comunicação mediada por middleware.
--   Abstração via RPC.
--   Sincronização com relógios lógicos.
--   Tolerância a falhas.
--   Descoberta de serviços.
--   Separação arquitetural em camadas.
-
-O projeto demonstra, de forma aplicada, como desafios relacionados a
-concorrência, latência e consistência podem ser tratados de maneira
-estruturada e tecnicamente fundamentada.
+# 🎮 MemoryArrows — Jogo da Memória Distribuído
+
+> **Projeto de Sistemas Distribuídos** — Comunicação WebSocket/RPC, Relógios de Lamport, Circuit Breaker, Retry e Nó de Nomes.
+
+Jogo da memória multiplayer onde jogadores usam placas **BitDogLab** (Raspberry Pi Pico W) ou browser para competir. O servidor exibe sequências crescentes de setas (↑↓←→) e os jogadores devem replicá-las. Quem errar é eliminado; o último sobrevivente vence.
+
+---
+
+## 📐 Arquitetura
+
+```
+BitDogLab (Pico W)  ←── WebSocket ──►  Servidor FastAPI  ◄── WebSocket ──►  Browser
+   MicroPython                           asyncio + SQLite                    HTML/JS
+   OLED + Joystick
+```
+
+## ✅ Requisitos de SD Implementados
+
+| Requisito | Implementação | Arquivo |
+|---|---|---|
+| **Comunicação RPC** | WebSocket — cliente nunca toca sockets diretamente | `ws_client.js`, `bitdoglab/ws_client.py` |
+| **N-Camadas** | Apresentação / Lógica / Persistência | `frontend/`, `server/`, `server/db/` |
+| **Concorrência** | FastAPI asyncio — múltiplos clientes simultâneos | `server/main.py` |
+| **Retry** | Reconexão com backoff exponencial (1s→2s→4s) | `server/middleware/retry.py` |
+| **Circuit Breaker** | Protege a camada SQLite (CLOSED→OPEN→HALF-OPEN) | `server/middleware/circuit_breaker.py` |
+| **Relógio de Lamport** | Ordena eventos de jogo entre todos os nós | `server/middleware/lamport_clock.py` |
+| **Nó de Nomes** | `/api/discover` — BitDogLab descobre servidor dinamicamente | `server/middleware/name_node.py` |
+
+---
+
+## 🚀 Como Executar
+
+### 1. Instalar dependências do servidor
+
+```bash
+cd server
+pip install -r requirements.txt
+```
+
+### 2. Iniciar o servidor
+
+```bash
+cd server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+O servidor estará em: `http://localhost:8000`
+
+### 3. Abrir o frontend no browser
+
+Acesse `http://localhost:8000` — o próprio servidor serve o frontend.
+
+| Página | URL |
+|---|---|
+| Lobby | `http://localhost:8000/` |
+| Partida | `http://localhost:8000/game` |
+| Placar | `http://localhost:8000/scoreboard` |
+| Status SD | `http://localhost:8000/api/status` |
+
+### 4. Configurar o BitDogLab
+
+1. Edite `bitdoglab/config.py` com:
+   - `WIFI_SSID` e `WIFI_PASSWORD`
+   - `DISCOVER_URL` com o IP da máquina que roda o servidor (ex: `http://192.168.1.100:8000/api/discover`)
+
+2. Copie toda a pasta `bitdoglab/` para a placa Pico W usando **Thonny** (File → Save to Device):
+   ```
+   main.py, config.py, ws_client.py, oled_display.py,
+   joystick.py, led_matrix.py, buzzer.py
+   ```
+
+3. Reinicie a placa — ela conecta ao WiFi, descobre o servidor e aparece no lobby.
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+sistemas-distribuidos/
+├── server/
+│   ├── main.py                    ← Entry point FastAPI
+│   ├── requirements.txt
+│   ├── game/
+│   │   ├── engine.py              ← Lógica do jogo + Lamport
+│   │   ├── room_manager.py        ← Salas
+│   │   └── models.py              ← Dataclasses
+│   ├── middleware/
+│   │   ├── circuit_breaker.py     ← Circuit Breaker (DB)
+│   │   ├── retry.py               ← Retry + backoff
+│   │   ├── lamport_clock.py       ← Relógio de Lamport
+│   │   └── name_node.py           ← Nó de Nomes
+│   └── db/
+│       └── database.py            ← SQLite (aiosqlite)
+│
+├── frontend/
+│   ├── index.html                 ← Lobby
+│   ├── game.html                  ← Partida ao vivo
+│   ├── scoreboard.html            ← Placar global
+│   ├── css/style.css
+│   └── js/ws_client.js            ← Abstração WebSocket
+│
+└── bitdoglab/
+    ├── main.py                    ← Firmware principal
+    ├── config.py                  ← Configurações (editar)
+    ├── ws_client.py               ← Client WS MicroPython
+    ├── oled_display.py            ← Driver OLED SSD1306
+    ├── joystick.py                ← Driver Joystick ADC
+    ├── led_matrix.py              ← WS2812B 5x5
+    └── buzzer.py                  ← Feedback sonoro PWM
+```
+
+---
+
+## 🎲 Fluxo de Jogo
+
+1. **Lobby**: Host cria sala no browser → código de 6 letras gerado
+2. **Entrada**: Demais jogadores entram com o código (browser ou BitDogLab)
+3. **Host inicia**: Partida começa quando há ≥2 jogadores
+4. **Rodadas** (sequência cresce +1 por rodada):
+   - Servidor exibe sequência de setas (OLED + browser)
+   - Cada jogador responde em turnos com o joystick ou botões do browser
+   - Timer de 8s por jogador
+   - Quem errar ou demorar → eliminado
+5. **Fim**: Último sobrevivente vence; scoreboard salvo no SQLite
+
+---
+
+## 🔌 Protocolo WebSocket
+
+| Direção | Tipo | Descrição |
+|---|---|---|
+| C→S | `identify` | Nome + tipo de dispositivo |
+| C→S | `create_room` | Host cria sala |
+| C→S | `join_room` | Entrar em sala com código |
+| C→S | `start_game` | Host inicia partida |
+| C→S | `player_move` | Movimento do joystick `{direction, lamport_ts}` |
+| S→C | `show_arrow` | Seta a exibir `{arrow, position, total}` |
+| S→C | `your_turn` | Vez do jogador `{timeout_ms}` |
+| S→C | `move_result` | Resultado `{correct}` |
+| S→C | `player_eliminated` | Jogador eliminado |
+| S→C | `game_over` | Fim de jogo `{winner, scoreboard}` |
+
+Todas as mensagens carregam `lamport_ts` para ordenação causal.

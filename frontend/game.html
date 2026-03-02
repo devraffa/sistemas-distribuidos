@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MemoryArrows — Partida</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <style>
+        body {
+            overflow-y: auto;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            min-height: 100vh;
+            padding: 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: -1;
+            }
+        }
+
+        /* ── Header ─────────────────────────────────────────────── */
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+        }
+
+        .room-code {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .room-code strong {
+            font-size: 1.1rem;
+            color: var(--accent);
+            letter-spacing: 0.1em;
+        }
+
+        .round-badge {
+            background: linear-gradient(135deg, var(--accent), #9b6cff);
+            padding: 6px 18px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        /* ── Main area ───────────────────────────────────────────── */
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Phase cards */
+        .phase {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .phase.active {
+            display: flex;
+        }
+
+        /* Lobby phase */
+        .lobby-card {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .player-row .player-name {
+            font-weight: 600;
+        }
+
+        .player-row .device-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Sequence display phase */
+        #sequence-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 16px;
+            border-radius: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            min-height: 68px;
+            align-items: center;
+        }
+
+        /* Current turn */
+        .turn-card {
+            padding: 28px 24px;
+        }
+
+        .current-player-name {
+            font-size: 1.1rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .input-arrows {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .input-arrows .btn-arrow {
+            width: 72px;
+            height: 72px;
+            border-radius: 14px;
+            font-size: 2rem;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-arrow:hover:not(:disabled) {
+            transform: scale(1.1);
+        }
+
+        .btn-arrow.up:hover:not(:disabled) {
+            border-color: var(--up);
+            background: rgba(74, 222, 128, 0.15);
+        }
+
+        .btn-arrow.down:hover:not(:disabled) {
+            border-color: var(--down);
+            background: rgba(248, 113, 113, 0.15);
+        }
+
+        .btn-arrow.left:hover:not(:disabled) {
+            border-color: var(--left);
+            background: rgba(96, 165, 250, 0.15);
+        }
+
+        .btn-arrow.right:hover:not(:disabled) {
+            border-color: var(--right);
+            background: rgba(251, 191, 36, 0.15);
+        }
+
+        .btn-arrow:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        /* Timer bar */
+        .timer-bar-wrap {
+            height: 6px;
+            background: var(--surface2);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .timer-bar {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            transition: width 0.1s linear;
+        }
+
+        /* Progress label */
+        #progress-label {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        /* Result overlay */
+        #result-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #result-overlay.show {
+            display: flex;
+        }
+
+        .result-card {
+            padding: 48px;
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .result-emoji {
+            font-size: 5rem;
+            margin-bottom: 16px;
+        }
+
+        .score-list {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .score-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--surface2);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sidebar-card {
+            padding: 20px;
+        }
+
+        .sidebar-card h3 {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-sidebar-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .player-sidebar-row:last-child {
+            border-bottom: none;
+        }
+
+        .player-sidebar-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .lamport-info {
+            margin-top: 8px;
+            font-size: 0.7rem;
+            color: var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container" style="padding-top: 20px;">
+
+        <!-- Header -->
+        <div class="glass game-header">
+            <div class="room-code">
+                Sala: <strong id="hdr-room-id">—</strong>
+            </div>
+            <div class="round-badge">Rodada <span id="hdr-round">0</span></div>
+            <div style="font-size:0.85rem;color:var(--muted);" id="hdr-player">—</div>
+        </div>
+
+        <div class="game-layout">
+            <!-- ── MAIN ────────────────────────────────────────────── -->
+            <div class="main-area">
+
+                <!-- LOBBY PHASE -->
+                <div class="phase active" id="phase-lobby">
+                    <div class="glass lobby-card">
+                        <h2>🎮 Aguardando jogadores...</h2>
+                        <p id="lobby-sub" style="margin-top:8px;">Compartilhe o código da sala com seus amigos.</p>
+                        <div style="margin:24px 0;">
+                            <div style="font-size:3rem;font-weight:900;letter-spacing:0.15em;color:var(--accent);"
+                                id="lobby-room-code">—</div>
+                            <p style="font-size:0.85rem;">Código da Sala</p>
+                        </div>
+                        <div class="player-list" id="lobby-player-list"></div>
+                        <div style="margin-top:24px;">
+                            <button class="btn btn-primary" id="btn-start" disabled style="min-width:200px;">
+                                Iniciar Partida
+                            </button>
+                            <p style="margin-top:8px;font-size:0.8rem;color:var(--muted);" id="start-hint">
+                                Mínimo 2 jogadores necessários
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEQUENCE PHASE -->
+                <div class="phase" id="phase-sequence">
+                    <div class="glass" style="padding:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <h3>📋 Sequência — Memorize!</h3>
+                            <span id="seq-counter" class="badge badge-active">0/0</span>
+                        </div>
+                        <div id="sequence-row"></div>
+                    </div>
+
+                    <!-- Big arrow display -->
+                    <div class="arrow-display" id="big-arrow">—</div>
+                    <p id="progress-label"></p>
+                </div>
+
+                <!-- TURN PHASE -->
+                <div class="phase" id="phase-turn">
+                    <div class="glass turn-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <h3>🕹️ Vez de: <span class="current-player-name" id="turn-player-name">—</span></h3>
+                            <span id="turn-progress" class="badge badge-active">0/0</span>
+                        </div>
+                        <div class="timer-bar-wrap">
+                            <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+                        </div>
+                        <div class="input-arrows" id="input-arrows">
+                            <button class="btn-arrow up" data-dir="UP" id="btn-up">↑</button>
+                            <button class="btn-arrow down" data-dir="DOWN" id="btn-down">↓</button>
+                            <button class="btn-arrow left" data-dir="LEFT" id="btn-left">←</button>
+                            <button class="btn-arrow right" data-dir="RIGHT" id="btn-right">→</button>
+                        </div>
+                        <p id="turn-status"
+                            style="text-align:center;margin-top:12px;color:var(--muted);font-size:0.9rem;"></p>
+                    </div>
+                </div>
+
+                <!-- WAITING PHASE -->
+                <div class="phase" id="phase-waiting">
+                    <div class="glass" style="padding:40px;text-align:center;">
+                        <div class="spinner" style="margin:0 auto 16px;"></div>
+                        <h3>Aguardando <span id="waiting-player-name">outro jogador</span>...</h3>
+                    </div>
+                </div>
+
+            </div><!-- /main-area -->
+
+            <!-- ── SIDEBAR ──────────────────────────────────────────── -->
+            <div class="sidebar">
+                <!-- Players -->
+                <div class="glass sidebar-card">
+                    <h3>👥 Jogadores</h3>
+                    <div id="sidebar-players"></div>
+                </div>
+
+                <!-- SD Info -->
+                <div class="glass sidebar-card" style="font-size:0.8rem;">
+                    <h3>⚙️ SD Status</h3>
+                    <div style="display:flex;flex-direction:column;gap:6px;color:var(--muted);">
+                        <div>🕐 Lamport: <strong id="sd-lamport" style="color:var(--text)">0</strong></div>
+                        <div>🔌 CB DB: <strong id="sd-cb" style="color:var(--up)">CLOSED</strong></div>
+                        <div>🏷️ Nome: <strong id="sd-service" style="color:var(--text)">game-server-main</strong></div>
+                    </div>
+                </div>
+
+                <!-- Game log -->
+                <div class="glass sidebar-card">
+                    <h3>📜 Log</h3>
+                    <div id="game-log"
+                        style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;font-size:0.8rem;color:var(--muted);">
+                    </div>
+                </div>
+            </div>
+        </div><!-- /game-layout -->
+    </div><!-- /container -->
+
+    <!-- ── RESULT OVERLAY ───────────────────────────────────────── -->
+    <div id="result-overlay">
+        <div class="glass result-card">
+            <div class="result-emoji" id="result-emoji">🏆</div>
+            <h2 id="result-title">Fim de Jogo!</h2>
+            <p id="result-subtitle"></p>
+            <div class="score-list" id="result-scores"></div>
+            <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;">
+                <a href="/" class="btn btn-secondary">← Lobby</a>
+                <a href="/scoreboard" class="btn btn-primary">Ver Placar →</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script type="module">
+        import { GameWSClient } from '/static/js/ws_client.js';
+
+        // ── State ──────────────────────────────────────────────────
+        const roomId = sessionStorage.getItem('room_id');
+        const playerId = sessionStorage.getItem('player_id');
+        const playerName = sessionStorage.getItem('player_name');
+        const isHost = sessionStorage.getItem('is_host') === 'true';
+
+        if (!roomId || !playerId) { window.location.href = '/'; }
+
+        const WS_HOST = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+        const client = new GameWSClient(WS_HOST);
+
+        let myTurn = false;
+        let moveIndex = 0;
+        let seqLength = 0;
+        let timerInterval = null;
+
+        const ARROW_MAP = { UP: '↑', DOWN: '↓', LEFT: '←', RIGHT: '→' };
+
+        // ── Init UI ────────────────────────────────────────────────
+        document.getElementById('hdr-room-id').textContent = roomId;
+        document.getElementById('lobby-room-code').textContent = roomId;
+        document.getElementById('hdr-player').textContent = playerName;
+        if (!isHost) document.getElementById('btn-start').style.display = 'none';
+
+        // ── Helper: phases ─────────────────────────────────────────
+        function showPhase(id) {
+            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // ── Helper: toast ──────────────────────────────────────────
+        function toast(msg, type = 'info', ms = 3000) {
+            const el = document.getElementById('toast');
+            el.textContent = msg; el.className = `show ${type}`;
+            setTimeout(() => el.className = '', ms);
+        }
+
+        // ── Helper: log ────────────────────────────────────────────
+        function log(msg) {
+            const el = document.getElementById('game-log');
+            const row = document.createElement('div');
+            row.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            el.prepend(row);
+            if (el.children.length > 30) el.lastChild.remove();
+        }
+
+        // ── Helper: sidebar players ────────────────────────────────
+        function renderSidebar(players) {
+            const el = document.getElementById('sidebar-players');
+            el.innerHTML = Object.values(players).map(p => `
+      <div class="player-sidebar-row">
+        <span class="player-sidebar-name">
+          ${p.device_type === 'bitdoglab' ? '🤖' : '🖥️'} ${p.name}
+        </span>
+        <span class="badge badge-${p.status}">${p.status === 'active' ? '✓' : p.status === 'eliminated' ? '✕' : '…'}</span>
+      </div>
+    `).join('');
+        }
+
+        // ── Helper: lobby player list ──────────────────────────────
+        function renderLobby(players) {
+            const el = document.getElementById('lobby-player-list');
+            el.innerHTML = Object.values(players).map(p => `
+      <div class="player-row">
+        <span class="player-name">${p.name}</span>
+        <span class="device-icon">${p.device_type === 'bitdoglab' ? '🤖' : '🖥️'}</span>
+        ${p.is_host ? '<span class="badge badge-winner">Host</span>' : ''}
+      </div>
+    `).join('');
+            const count = Object.keys(players).length;
+            const btnStart = document.getElementById('btn-start');
+            btnStart.disabled = count < 2 || !isHost;
+            document.getElementById('start-hint').textContent =
+                count < 2 ? 'Mínimo 2 jogadores' : `${count} jogador(es) prontos`;
+        }
+
+        // ── Arrow display helpers ──────────────────────────────────
+        function showBigArrow(dir) {
+            const el = document.getElementById('big-arrow');
+            el.textContent = ARROW_MAP[dir] || '?';
+            el.className = `arrow-display arrow-${dir} animate-in`;
+            setTimeout(() => el.classList.remove('animate-in'), 300);
+        }
+
+        function addSeqChip(dir, pos, total) {
+            const row = document.getElementById('sequence-row');
+            if (pos === 1) row.innerHTML = '';
+            const chip = document.createElement('div');
+            chip.className = `arrow-chip ${dir}`;
+            chip.textContent = ARROW_MAP[dir];
+            row.appendChild(chip);
+            document.getElementById('seq-counter').textContent = `${pos}/${total}`;
+        }
+
+        // ── Timer bar ──────────────────────────────────────────────
+        function startTimer(ms) {
+            clearInterval(timerInterval);
+            const bar = document.getElementById('timer-bar');
+            const start = Date.now();
+            bar.style.width = '100%';
+            timerInterval = setInterval(() => {
+                const pct = Math.max(0, 1 - (Date.now() - start) / ms);
+                bar.style.width = `${pct * 100}%`;
+                bar.style.background = pct < 0.3
+                    ? 'linear-gradient(90deg,#ef4444,#dc2626)'
+                    : 'linear-gradient(90deg,var(--accent),var(--accent2))';
+                if (pct <= 0) clearInterval(timerInterval);
+            }, 80);
+        }
+
+        function stopTimer() { clearInterval(timerInterval); }
+
+        // ── Arrow buttons ──────────────────────────────────────────
+        function setArrowsEnabled(enabled) {
+            document.querySelectorAll('.btn-arrow').forEach(b => b.disabled = !enabled);
+        }
+        setArrowsEnabled(false);
+
+        document.querySelectorAll('.btn-arrow').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!myTurn) return;
+                const dir = btn.dataset.dir;
+                client.sendMove(dir);
+                log(`Enviou: ${ARROW_MAP[dir]}`);
+            });
+        });
+
+        // ── WebSocket event handlers ───────────────────────────────
+        client
+            .on('identified', () => {
+                // Reentrar na sala após identificação
+                client.joinRoom(roomId);
+            })
+            .on('player_joined', msg => {
+                renderLobby(msg.room.players);
+                renderSidebar(msg.room.players);
+                log(`${msg.player.name} entrou na sala`);
+            })
+            .on('error', msg => toast(msg.message, 'error'))
+
+            .on('game_started', msg => {
+                showPhase('phase-sequence');
+                document.getElementById('big-arrow').textContent = '—';
+                document.getElementById('sequence-row').innerHTML = '';
+                renderSidebar(msg.room.players);
+                log('🎮 Jogo iniciado!');
+                toast('Jogo iniciado!', 'success');
+            })
+            .on('round_start', msg => {
+                document.getElementById('hdr-round').textContent = msg.round;
+                document.getElementById('big-arrow').textContent = '—';
+                document.getElementById('big-arrow').className = 'arrow-display';
+                document.getElementById('sequence-row').innerHTML = '';
+                log(`── Rodada ${msg.round} ──`);
+            })
+            .on('show_sequence_start', msg => {
+                showPhase('phase-sequence');
+                document.getElementById('progress-label').textContent = `Memorize a sequência de ${msg.length} seta(s)!`;
+            })
+            .on('show_arrow', msg => {
+                showBigArrow(msg.arrow);
+                addSeqChip(msg.arrow, msg.position, msg.total);
+                log(`Seta: ${ARROW_MAP[msg.arrow]}`);
+            })
+            .on('show_sequence_end', () => {
+                document.getElementById('progress-label').textContent = 'Aguarde sua vez...';
+                document.getElementById('big-arrow').textContent = '✓';
+            })
+
+            .on('your_turn', msg => {
+                myTurn = true;
+                moveIndex = 0;
+                seqLength = msg.sequence_length;
+                showPhase('phase-turn');
+                setArrowsEnabled(true);
+                startTimer(msg.timeout_ms);
+                document.getElementById('turn-player-name').textContent = playerName + ' (você)';
+                document.getElementById('turn-progress').textContent = `0/${seqLength}`;
+                document.getElementById('turn-status').textContent = 'Repita a sequência!';
+                log('🎯 É a sua vez!');
+                toast('Sua vez!', 'info');
+            })
+            .on('waiting_for_player', msg => {
+                myTurn = false;
+                setArrowsEnabled(false);
+                stopTimer();
+                showPhase('phase-waiting');
+                document.getElementById('waiting-player-name').textContent = msg.player_name;
+            })
+            .on('move_result', msg => {
+                moveIndex++;
+                document.getElementById('turn-progress').textContent = `${moveIndex}/${seqLength}`;
+                if (msg.correct) {
+                    document.getElementById('turn-status').textContent = `✅ ${moveIndex}/${seqLength} correto!`;
+                    toast('✅ Correto!', 'success', 800);
+                } else {
+                    document.getElementById('turn-status').textContent = '❌ Errou!';
+                    setArrowsEnabled(false);
+                    myTurn = false;
+                    stopTimer();
+                    toast('❌ Errou!', 'error');
+                }
+            })
+            .on('timeout', () => {
+                myTurn = false;
+                setArrowsEnabled(false);
+                stopTimer();
+                toast('⏱️ Tempo esgotado!', 'error');
+            })
+            .on('player_eliminated', msg => {
+                log(`💀 ${msg.player.name} foi eliminado (rodada ${msg.round})`);
+                toast(`${msg.player.name} eliminado!`, 'error');
+            })
+            .on('round_result', msg => {
+                renderSidebar(msg.survivors.reduce((acc, p) => ({ ...acc, [p.id]: p }), {}));
+                log(`Rodada ${msg.round} finalizada. ${msg.survivors.length} sobrevivente(s).`);
+            })
+            .on('player_disconnected', msg => {
+                log(`⚠️ ${msg.player_name} desconectou`);
+                toast(`${msg.player_name} desconectou`, 'error');
+            })
+            .on('game_over', msg => {
+                stopTimer();
+                const winner = msg.winner;
+                const isWinner = winner && winner.id === playerId;
+
+                document.getElementById('result-emoji').textContent = isWinner ? '🏆' : '🎮';
+                document.getElementById('result-title').textContent = isWinner ? 'Você Venceu!' : 'Fim de Jogo!';
+                document.getElementById('result-subtitle').textContent =
+                    winner ? `Vencedor: ${winner.name} · ${msg.total_rounds} rodadas` : 'Empate!';
+
+                const scoreEl = document.getElementById('result-scores');
+                scoreEl.innerHTML = msg.scoreboard.map((p, i) => `
+        <div class="score-row">
+          <span>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`} ${p.name}</span>
+          <span style="font-weight:700;color:var(--accent)">${p.score} pts</span>
+        </div>
+      `).join('');
+
+                document.getElementById('result-overlay').classList.add('show');
+            })
+
+            // Lamport clock display
+            .on('*', (type, msg) => {
+                if (msg.lamport_ts !== undefined) {
+                    document.getElementById('sd-lamport').textContent = msg.lamport_ts;
+                }
+            });
+
+        // ── Fetch SD status ────────────────────────────────────────
+        async function fetchStatus() {
+            try {
+                const r = await fetch('/api/status');
+                const data = await r.json();
+                document.getElementById('sd-cb').textContent = data.circuit_breaker_db.state;
+                const cbEl = document.getElementById('sd-cb');
+                cbEl.style.color = data.circuit_breaker_db.state === 'CLOSED' ? 'var(--up)'
+                    : data.circuit_breaker_db.state === 'OPEN' ? 'var(--down)' : 'var(--right)';
+            } catch { }
+        }
+        fetchStatus();
+        setInterval(fetchStatus, 5000);
+
+        // ── Start button ───────────────────────────────────────────
+        document.getElementById('btn-start').addEventListener('click', () => {
+            client.startGame();
+            log('Host iniciou o jogo');
+        });
+
+        // ── Connect ────────────────────────────────────────────────
+        client.connect(playerId, playerName);
+    </script>
+</body>
+
+</html>
