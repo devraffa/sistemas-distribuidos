@@ -20,7 +20,7 @@ void init_joystick() {
   adc_gpio_init(JOY_Y_PIN);
 }
 
-void print_joystick(char *str_x, char *str_y, size_t buffer_size,
+void print_joystick(char *player_str, char *str_x, char *str_y, size_t buffer_size,
                     uint bar_width) {
   // Lê os valores do joystick
   adc_select_input(0);
@@ -52,7 +52,8 @@ void print_joystick(char *str_x, char *str_y, size_t buffer_size,
 
   // Imprime os valores do joystick
   ssd1306_clear();
-  ssd1306_draw_string(get_center_x(str_x), get_center_y() - 5, str_x, true);
-  ssd1306_draw_string(get_center_x(str_y), get_center_y() + 5, str_y, true);
+  ssd1306_draw_string(get_center_x(player_str), get_center_y() - 15, player_str, true);
+  ssd1306_draw_string(get_center_x(str_x), get_center_y(), str_x, true);
+  ssd1306_draw_string(get_center_x(str_y), get_center_y() + 10, str_y, true);
   ssd1306_update(I2C_PORT);
 }
