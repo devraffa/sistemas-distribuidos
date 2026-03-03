@@ -24,7 +24,5 @@ void init_tela();
 void init_joystick();
 void print_joystick(char *str_x, char *str_y, size_t buffer_size,
                     uint bar_width);
-void init_mqtt(const char *ip_address);
-void mqtt_pub_start(void);
 
 #endif // UTILS_H
