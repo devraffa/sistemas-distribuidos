@@ -1,4 +1,64 @@
 #include "utils.h"
+#include "lwip/apps/mqtt.h"
+#include "lwip/dns.h"
+
+static mqtt_client_t *static_mqtt_client;
+static ip_addr_t mqtt_broker_address;
+
+// Callback chamado quando a conexão com o broker termina (sucesso ou falha)
+static void mqtt_connection_cb(mqtt_client_t *client, void *arg,
+                               mqtt_connection_status_t status) {
+  if (status == MQTT_CONNECT_ACCEPTED) {
+    printf("MQTT: Conectado ao broker com sucesso!\n");
+    ssd1306_clear();
+    ssd1306_draw_string(get_center_x("sucesso!"), get_center_y(), "sucesso!", true);
+    ssd1306_update(I2C_PORT);
+  } else {
+    printf("MQTT: Falha na conexão, status: %d\n", status);
+    ssd1306_clear();
+    ssd1306_draw_string(get_center_x("falha!"), get_center_y(), "falha!", true);
+    ssd1306_update(I2C_PORT);
+  }
+}
+
+// Função para publicar uma mensagem
+void mqtt_pub_start(void) {
+  const char *pub_payload = "start";
+  err_t err = mqtt_publish(static_mqtt_client, "play/sd", pub_payload,
+                           strlen(pub_payload), 0, 0, NULL, NULL);
+
+  if (err != ERR_OK) {
+    printf("Erro ao publicar: %d\n", err);
+  } else {
+    printf("Mensagem enviada!\n");
+  }
+}
+
+void init_mqtt(const char *ip_address) {
+  printf("Iniciando MQTT\n");
+
+  static_mqtt_client = mqtt_client_new();
+
+  // Substitua pelo IP do seu PC onde o Mosquitto está rodando
+  ip4addr_aton(ip_address, &mqtt_broker_address);
+
+  struct mqtt_connect_client_info_t ci;
+  memset(&ci, 0, sizeof(ci));
+  ci.client_id = "PicoW_Cl";
+  ci.keep_alive = 60;
+
+  // Tenta conectar
+  printf("Conectando ao broker MQTT...\n");
+
+  ssd1306_clear();
+  ssd1306_draw_string(get_center_x("Conect. broker..."), get_center_y(), "Conect. broker...", true);
+  ssd1306_update(I2C_PORT);
+
+  sleep_ms(2000);
+
+  mqtt_client_connect(static_mqtt_client, &mqtt_broker_address, MQTT_PORT,
+                      mqtt_connection_cb, NULL, &ci);
+}
 
 void init_tela() {
   // Inicializa o I2C
@@ -7,7 +67,7 @@ void init_tela() {
   gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
   gpio_pull_up(SDA_PIN);
   gpio_pull_up(SCL_PIN);
-  
+
   // Inicializa o display OLED
   ssd1306_init(I2C_PORT);
   ssd1306_clear();
@@ -20,39 +80,8 @@ void init_joystick() {
   adc_gpio_init(JOY_Y_PIN);
 }
 
-int connect_wifi() {
-  if (cyw43_arch_init()) {
-    ssd1306_clear();
-    ssd1306_draw_string(get_center_x("Erro ao iniciar Wi-Fi"), get_center_y() - 5, "Erro ao iniciar Wi-Fi", true);
-    ssd1306_update(I2C_PORT);
-    return 0;
-  }
-
-  cyw43_arch_enable_sta_mode();
-
-  const char *ssid = "rede-teste"; // SEU_WIFI
-  const char *password = "Rteste-314"; // SUA_SENHA
-
-  ssd1306_clear();
-  ssd1306_draw_string(get_center_x("Conectando Wi-Fi..."), get_center_y() - 5, "Conectando Wi-Fi...", true);
-  ssd1306_draw_string(get_center_x(ssid), get_center_y() + 5, ssid, true);
-  ssd1306_update(I2C_PORT);
-
-  if (cyw43_arch_wifi_connect_timeout_ms(ssid, password,
-          CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-      ssd1306_clear();
-      ssd1306_draw_string(get_center_x("Falha ao conectar"), get_center_y() - 5, "Falha ao conectar", true);
-      ssd1306_update(I2C_PORT);
-  } else {
-      ssd1306_clear();
-      ssd1306_draw_string(get_center_x("Conectado!"), get_center_y() - 5, "Conectado!", true);
-      ssd1306_update(I2C_PORT);
-  }
-  sleep_ms(5000);
-  return 1;
-  }
-
-void print_joystick(char *str_x, char *str_y, size_t buffer_size, uint bar_width) {
+void print_joystick(char *str_x, char *str_y, size_t buffer_size,
+                    uint bar_width) {
   // Lê os valores do joystick
   adc_select_input(0);
   uint adc_y_raw = adc_read();
@@ -68,7 +97,7 @@ void print_joystick(char *str_x, char *str_y, size_t buffer_size, uint bar_width
   // --- Para o Eixo X ---
   int pos = snprintf(str_x, buffer_size, "X: [");
   for (uint i = 0; i < bar_width; ++i) {
-      str_x[pos++] = (i == bar_x_pos) ? '*' : ' ';
+    str_x[pos++] = (i == bar_x_pos) ? '*' : ' ';
   }
   str_x[pos] = '\0';
   snprintf(str_x + pos, buffer_size - pos, "]");
@@ -76,7 +105,7 @@ void print_joystick(char *str_x, char *str_y, size_t buffer_size, uint bar_width
   // --- Para o Eixo Y ---
   pos = snprintf(str_y, buffer_size, "Y: [");
   for (uint i = 0; i < bar_width; ++i) {
-      str_y[pos++] = (i == bar_y_pos) ? '*' : ' ';
+    str_y[pos++] = (i == bar_y_pos) ? '*' : ' ';
   }
   str_y[pos] = '\0';
   snprintf(str_y + pos, buffer_size - pos, "]");

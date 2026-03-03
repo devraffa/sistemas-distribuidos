@@ -50,6 +50,7 @@ target_link_libraries(BitDogLab
         hardware_i2c
         hardware_adc
         pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip_mqtt
 )
 
 # Add the standard include files to the build

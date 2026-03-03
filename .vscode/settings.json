@@ -10,5 +10,6 @@
     ],
     "python.analysis.extraPaths": [
         ".vscode/Pico-W-Stub"
-    ]
+    ],
+    "cmake.sourceDirectory": "/home/claylton/Documentos/sistemas-distribuidos/BitDogLab"
 }
