@@ -47,16 +47,13 @@ pico_enable_stdio_usb(BitDogLab 1)
 # Add the standard library to the build
 target_link_libraries(BitDogLab 
         pico_stdlib
+        hardware_i2c
+        pico_cyw43_arch_lwip_threadsafe_background
 )
 
 # Add the standard include files to the build
 target_include_directories(BitDogLab PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(BitDogLab 
-        pico_stdlib
-        hardware_i2c
 )
 
 pico_add_extra_outputs(BitDogLab)

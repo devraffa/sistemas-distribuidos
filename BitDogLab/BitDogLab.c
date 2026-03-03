@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
-// #include "pico/cyw43_arch.h"
+#include "pico/cyw43_arch.h"
 
 // pasta INC
 #include "inc/ssd1306.h"
@@ -26,30 +26,34 @@ int main() {
   ssd1306_init(I2C_PORT);
   ssd1306_clear();
 
-  /*
-
-  sleep_ms(10000);
-
   if (cyw43_arch_init()) {
-    printf("Erro ao iniciar Wi-Fi\n");
+    ssd1306_clear();
+    ssd1306_draw_string(get_center_x("Erro ao iniciar Wi-Fi"), get_center_y() - 5, "Erro ao iniciar Wi-Fi", true);
+    ssd1306_update(I2C_PORT);
     return -1;
   }
 
   cyw43_arch_enable_sta_mode();
 
-  const char *ssid = "brisa-4208840"; // SEU_WIFI
-  const char *password = "wydqhiiw"; // SUA_SENHA
+  const char *ssid = "SEU_WIFI"; // SEU_WIFI
+  const char *password = "SUA_SENHA"; // SUA_SENHA
 
-  printf("Conectando ao Wi-Fi...\n");
+  ssd1306_clear();
+  ssd1306_draw_string(get_center_x("Conectando Wi-Fi..."), get_center_y() - 5, "Conectando Wi-Fi...", true);
+  ssd1306_draw_string(get_center_x(ssid), get_center_y() + 5, ssid, true);
+  ssd1306_update(I2C_PORT);
 
   if (cyw43_arch_wifi_connect_timeout_ms(ssid, password,
           CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-      printf("Falha ao conectar\n");
+      ssd1306_clear();
+      ssd1306_draw_string(get_center_x("Falha ao conectar"), get_center_y() - 5, "Falha ao conectar", true);
+      ssd1306_update(I2C_PORT);
   } else {
-      printf("Conectado!\n");
+      ssd1306_clear();
+      ssd1306_draw_string(get_center_x("Conectado!"), get_center_y() - 5, "Conectado!", true);
+      ssd1306_update(I2C_PORT);
   }
-
-  */
+  sleep_ms(5000);
 
   while (true) {
     ssd1306_clear();
