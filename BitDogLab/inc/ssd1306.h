@@ -1,9 +1,7 @@
 #ifndef SSD1306_H
 #define SSD1306_H
 
-#include "pico/stdlib.h"
 #include "hardware/i2c.h"
-#include <string.h> // Para memcpy e memset
 
 // Definições para o display SSD1306
 #define SSD1306_I2C_ADDR 0x3C

@@ -35,7 +35,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(BitDogLab BitDogLab.c inc/ssd1306.c)
+add_executable(BitDogLab BitDogLab.c inc/ssd1306.c utils/utils.c)
 
 pico_set_program_name(BitDogLab "BitDogLab")
 pico_set_program_version(BitDogLab "0.1")
@@ -48,6 +48,7 @@ pico_enable_stdio_usb(BitDogLab 1)
 target_link_libraries(BitDogLab 
         pico_stdlib
         hardware_i2c
+        hardware_adc
         pico_cyw43_arch_lwip_threadsafe_background
 )
 

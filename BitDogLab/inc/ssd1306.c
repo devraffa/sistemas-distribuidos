@@ -1,4 +1,5 @@
 #include "ssd1306.h"
+#include <string.h>
 
 // Fonte 5x7 (caracteres ASCII de 32 a 126)
 static const uint8_t font5x7[][5] = {
