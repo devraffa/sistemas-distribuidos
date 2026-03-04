@@ -1,4 +1,4 @@
-# 🎮 MemoryArrows — Jogo da Memória Distribuído
+# Pico Pi Memory — Jogo da Memória Distribuído
 
 > **Projeto de Sistemas Distribuídos** — Comunicação WebSocket/RPC, Relógios de Lamport, Circuit Breaker, Retry e Nó de Nomes.
 
