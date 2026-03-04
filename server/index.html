@@ -319,7 +319,11 @@
             let rankingHTML = '';
             for (let i = 0; i < scoresArray.length; i++) {
                 const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : `${i + 1}º`));
-                rankingHTML += `<div>${medal} <b style="color: var(--primary)">${scoresArray[i].id}</b>: <span style="color: var(--success)">${scoresArray[i].score} pts</span></div>`;
+                rankingHTML += `<div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                    <div style="min-width: 150px; text-align: left;">${medal} <b style="color: var(--primary)">${scoresArray[i].id}</b>: <span style="color: var(--success)">${scoresArray[i].score} pts</span></div>
+                    <input type="text" id="name-${scoresArray[i].id}" placeholder="Seu nome" style="padding: 0.5rem; border-radius: 5px; border: none; outline: none; background: #21262d; color: var(--text-color);">
+                    <button class="btn" style="padding: 0.5rem 1rem; font-size: 1rem;" onclick="saveScore('${scoresArray[i].id}', ${scoresArray[i].score}, this)">Salvar</button>
+                </div>`;
             }
 
             // Add players who scored 0 if they connected and played but never won
@@ -327,14 +331,49 @@
             fetchPromisePlayers.forEach(pNode => {
                 const pName = pNode.textContent;
                 if (!scoresArray.find(p => p.id === pName)) {
-                    rankingHTML += `<div>😢 <b style="color: var(--primary)">${pName}</b>: 0 pts</div>`;
+                    rankingHTML += `<div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                        <div style="min-width: 150px; text-align: left;">😢 <b style="color: var(--primary)">${pName}</b>: 0 pts</div>
+                        <input type="text" id="name-${pName}" placeholder="Seu nome" style="padding: 0.5rem; border-radius: 5px; border: none; outline: none; background: #21262d; color: var(--text-color);">
+                        <button class="btn" style="padding: 0.5rem 1rem; font-size: 1rem;" onclick="saveScore('${pName}', 0, this)">Salvar</button>
+                    </div>`;
                 }
             });
 
             rankingList.innerHTML = rankingHTML;
 
+            if (!document.getElementById("global-rank-link")) {
+                const linkDiv = document.createElement("div");
+                linkDiv.style.marginTop = "2rem";
+                linkDiv.innerHTML = '<a id="global-rank-link" href="/rank" target="_blank" class="btn" style="text-decoration: none;">Ver Ranking Global</a>';
+                rankingBoard.appendChild(linkDiv);
+            }
+
             startBtn.style.display = 'inline-block';
             startBtn.textContent = 'Jogar Nova Partida';
+        }
+
+        async function saveScore(playerId, score, btnElement) {
+            const nameInput = document.getElementById(`name-${playerId}`);
+            const playerName = nameInput.value.trim() || playerId;
+
+            try {
+                const res = await fetch(`${API_URL}/save_score`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: playerName, score: score })
+                });
+                if (res.ok) {
+                    btnElement.textContent = "Salvo!";
+                    btnElement.style.backgroundColor = "var(--success)";
+                    btnElement.disabled = true;
+                    nameInput.disabled = true;
+                } else {
+                    alert("Erro ao salvar.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erro de conexão ao salvar.");
+            }
         }
 
         async function fetchState() {

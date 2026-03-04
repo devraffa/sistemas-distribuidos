@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking Global</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --primary: #58a6ff;
+            --success: #3fb950;
+            --card-bg: #161b22;
+            --danger: #f85149;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            background: -webkit-linear-gradient(45deg, var(--primary), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.2rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .score {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .rank {
+            font-weight: bold;
+            color: #8b949e;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 2rem;
+            background: linear-gradient(45deg, var(--primary), #3b8ced);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(88, 166, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏆 Ranking Global 🏆</h1>
+        <table id="ranking-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Jogador</th>
+                    <th>Pontuação</th>
+                </tr>
+            </thead>
+            <tbody id="ranking-body">
+                <tr>
+                    <td colspan="3" style="text-align: center;">Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="text-align: center;">
+            <a href="/" class="btn">Voltar ao Jogo</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadRanking() {
+            try {
+                const res = await fetch('/api/rank');
+                const data = await res.json();
+
+                const tbody = document.getElementById('ranking-body');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhum placar salvo ainda.</td></tr>';
+                    return;
+                }
+
+                data.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="rank">${index + 1}</td>
+                        <td>${row.name}</td>
+                        <td class="score">${row.score} pts</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+                document.getElementById('ranking-body').innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--danger);">Erro ao carregar ranking.</td></tr>';
+            }
+        }
+
+        loadRanking();
+    </script>
+</body>
+
+</html>
