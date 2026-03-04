@@ -1,13 +1,24 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from typing import Any, Dict
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
 
-game_state = {"status": "aguardando"}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+game_state: Dict[str, Any] = {"status": "aguardando"}
 
 # Variáveis para gerenciar as placas
-mac_to_player = {} 
-player_counter = 1
+mac_to_player: Dict[str, str] = {}
+player_counter: int = 1
 
 class JoystickData(BaseModel):
     player_id: str # recebe o MAC Address da placa
@@ -16,7 +27,7 @@ class JoystickData(BaseModel):
 
 @app.post("/rpc/update_position")
 async def update_position(data: JoystickData):
-    global player_counter
+    global player_counter, game_state, mac_to_player
     
     # 1. Verifica se é a primeira vez que esta placa se comunica
     if data.player_id not in mac_to_player:
@@ -36,3 +47,12 @@ async def update_position(data: JoystickData):
     print(f"Estado Global: {game_state}")
     
     return {"assigned_id": player_name, "message": "Posição atualizada", "global_state": game_state}
+
+@app.get("/state")
+async def get_state():
+    return game_state
+
+@app.get("/")
+async def get_index():
+    with open("/home/claylton/Documentos/sistemas-distribuidos/server/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), status_code=200)

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio do Joystick</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --primary: #58a6ff;
+            --success: #3fb950;
+            --danger: #f85149;
+            --card-bg: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            transition: transform 0.3s ease;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 2.5rem;
+            background: -webkit-linear-gradient(45deg, var(--primary), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #direction-display {
+            font-size: 6rem;
+            margin: 2rem 0;
+            min-height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 20px rgba(88, 166, 255, 0.4);
+        }
+
+        .direction-animation {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), #3b8ced);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+            transition: all 0.2s ease;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(88, 166, 255, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        #status-text {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            height: 2rem;
+        }
+
+        .pulse {
+            animation: pulse-red 1s infinite;
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        #players-info {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 12px;
+            min-width: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .player-card.winner {
+            background: rgba(63, 185, 80, 0.2);
+            border-color: var(--success);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(63, 185, 80, 0.4);
+        }
+
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .player-pos {
+            font-size: 0.9rem;
+            color: #8b949e;
+            font-family: monospace;
+        }
+
+        .text-success {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .text-wait {
+            color: #8b949e;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+                text-shadow: 0 0 10px var(--danger);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Desafio do Joystick</h1>
+        <div id="status-text" class="text-wait">Aguardando jogadores...</div>
+        <div>
+            <button id="start-btn" class="btn" style="display: none;" onclick="startGame()">Start Game</button>
+        </div>
+        <div id="round-counter" style="margin-top: 1rem; font-size: 1.2rem; display: none;">Round: <span
+                id="round-num">0</span>/10</div>
+        <div id="direction-display">🎮</div>
+
+        <div id="players-info">
+            <!-- Player cards injecteds here -->
+        </div>
+
+        <div id="ranking-board" style="display: none; margin-top: 2rem;">
+            <h2>🏆 Ranking Final 🏆</h2>
+            <div id="ranking-list" style="text-align: left; font-size: 1.5rem; line-height: 2;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        // Adjust these thresholds based on your joystick's actual values
+        const THRESHOLD_LOW = 1000;
+        const THRESHOLD_HIGH = 3000;
+
+        let gameState = 'waiting'; // waiting, ready, countdown, playing, finished, ranking
+        let currentTarget = null;
+        let lastWinner = null;
+        let currentTimeout = null;
+
+        const TOTAL_ROUNDS = 10;
+        let currentRound = 0;
+        let playersScores = {}; // { 'p1': 20, ... }
+
+        const directions = [
+            { id: 'CIMA', icon: '⬆️', check: (pos) => pos.y > THRESHOLD_HIGH || pos.y < THRESHOLD_LOW },
+            { id: 'BAIXO', icon: '⬇️', check: (pos) => pos.y < THRESHOLD_LOW || pos.y > THRESHOLD_HIGH },
+            { id: 'ESQUERDA', icon: '⬅️', check: (pos) => pos.x < THRESHOLD_LOW || pos.x > THRESHOLD_HIGH },
+            { id: 'DIREITA', icon: '➡️', check: (pos) => pos.x > THRESHOLD_HIGH || pos.x < THRESHOLD_LOW }
+            // Note: Since standard joysticks can be mounted differently, I made 
+            // the check accept the extremes. For a real game, you should refine
+            // these checks based on testing exactly how X and Y map to physical directions.
+        ];
+
+        // Strict mapping (Assuming Standard Orientation)
+        const strictDirections = [
+            { id: 'CIMA', icon: '⬆️', check: (pos) => pos.y > THRESHOLD_HIGH },
+            { id: 'BAIXO', icon: '⬇️', check: (pos) => pos.y < THRESHOLD_LOW },
+            { id: 'ESQUERDA', icon: '⬅️', check: (pos) => pos.x < THRESHOLD_LOW },
+            { id: 'DIREITA', icon: '➡️', check: (pos) => pos.x > THRESHOLD_HIGH }
+        ];
+
+        const directionDisplay = document.getElementById('direction-display');
+        const statusText = document.getElementById('status-text');
+        const startBtn = document.getElementById('start-btn');
+        const playersInfo = document.getElementById('players-info');
+        const roundNumSpan = document.getElementById('round-num');
+        const roundCounterDiv = document.getElementById('round-counter');
+        const rankingBoard = document.getElementById('ranking-board');
+        const rankingList = document.getElementById('ranking-list');
+
+        function startGame() {
+            if (gameState === 'countdown' || gameState === 'playing') return;
+
+            // Initial reset if starting a new full game
+            if (currentRound === 0 || currentRound >= TOTAL_ROUNDS) {
+                currentRound = 0;
+                lastWinner = null;
+                playersScores = {};
+                rankingBoard.style.display = 'none';
+                playersInfo.style.display = 'flex';
+                roundCounterDiv.style.display = 'block';
+            }
+
+            gameState = 'countdown';
+            startBtn.style.display = 'none';
+            statusText.textContent = 'Prepare-se...';
+            statusText.className = 'text-wait';
+            directionDisplay.textContent = '🕒';
+            directionDisplay.classList.remove('direction-animation');
+
+            // Wait 1.5 - 3 seconds randomly to keep it fast
+            const delay = Math.floor(Math.random() * 1500) + 1500;
+
+            currentTimeout = setTimeout(() => {
+                if (gameState !== 'countdown') return; // Cancelled
+
+                gameState = 'playing';
+                currentRound++;
+                roundNumSpan.textContent = currentRound;
+
+                // Pick random direction
+                const dir = strictDirections[Math.floor(Math.random() * strictDirections.length)];
+                currentTarget = dir;
+
+                directionDisplay.textContent = dir.icon;
+
+                // Force animation restart
+                directionDisplay.classList.remove('direction-animation');
+                void directionDisplay.offsetWidth; // trigger reflow
+                directionDisplay.classList.add('direction-animation');
+
+                statusText.textContent = `Rodada ${currentRound}! Vire para a ${dir.id}!`;
+                statusText.className = 'pulse';
+
+            }, delay);
+        }
+
+        function finishRound(winnerId) {
+            gameState = 'finished';
+            currentTarget = null;
+            lastWinner = winnerId;
+
+            if (playersScores[winnerId] === undefined) playersScores[winnerId] = 0;
+            playersScores[winnerId] += 10;
+
+            statusText.textContent = `Rodada ${currentRound}: ${winnerId} marcou 10 pontos!`;
+            statusText.className = 'text-success';
+            directionDisplay.textContent = '🏅';
+
+            if (currentRound < TOTAL_ROUNDS) {
+                // Auto start next round after 2 seconds
+                setTimeout(startGame, 2000);
+            } else {
+                showFinalRanking();
+            }
+        }
+
+        function showFinalRanking() {
+            gameState = 'ranking';
+            directionDisplay.textContent = '🏁';
+            statusText.textContent = 'Jogo Finalizado!';
+            statusText.className = 'text-success';
+
+            playersInfo.style.display = 'none';
+            roundCounterDiv.style.display = 'none';
+            rankingBoard.style.display = 'block';
+
+            // Format ranking
+            const scoresArray = Object.entries(playersScores)
+                .map(([id, score]) => ({ id, score }))
+                .sort((a, b) => b.score - a.score);
+
+            let rankingHTML = '';
+            for (let i = 0; i < scoresArray.length; i++) {
+                const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : `${i + 1}º`));
+                rankingHTML += `<div>${medal} <b style="color: var(--primary)">${scoresArray[i].id}</b>: <span style="color: var(--success)">${scoresArray[i].score} pts</span></div>`;
+            }
+
+            // Add players who scored 0 if they connected and played but never won
+            const fetchPromisePlayers = document.querySelectorAll('.player-name');
+            fetchPromisePlayers.forEach(pNode => {
+                const pName = pNode.textContent;
+                if (!scoresArray.find(p => p.id === pName)) {
+                    rankingHTML += `<div>😢 <b style="color: var(--primary)">${pName}</b>: 0 pts</div>`;
+                }
+            });
+
+            rankingList.innerHTML = rankingHTML;
+
+            startBtn.style.display = 'inline-block';
+            startBtn.textContent = 'Jogar Nova Partida';
+        }
+
+        async function fetchState() {
+            try {
+                const res = await fetch(`${API_URL}/state`);
+                const state = await res.json();
+
+                if (gameState !== 'ranking') {
+                    updatePlayersUI(state);
+                }
+
+                if (gameState === 'playing' && currentTarget) {
+                    for (const playerId in state) {
+                        if (playerId === 'status') continue;
+
+                        const pos = state[playerId];
+                        // First one to cross the threshold wins the round
+                        if (currentTarget.check(pos)) {
+                            finishRound(playerId);
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                // Ignore API fetch errors so it keeps trying quietly
+            }
+
+            setTimeout(fetchState, 50); // Fetch fast (every 50ms = 20 FPS)
+        }
+
+        function updatePlayersUI(state) {
+            playersInfo.innerHTML = '';
+
+            let playerCount = 0;
+            for (const playerId in state) {
+                if (playerId === 'status') continue;
+                playerCount++;
+
+                const pos = state[playerId];
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                if (playerId === lastWinner && gameState === 'finished') {
+                    card.classList.add('winner');
+                }
+
+                const score = playersScores[playerId] || 0;
+
+                card.innerHTML = `
+                    <div class="player-name">${playerId}</div>
+                    <div class="player-pos">X: ${pos.x} <br> Y: ${pos.y}</div>
+                    <div style="margin-top: 10px; font-weight: bold; color: var(--success)">★ ${score} pts</div>
+                `;
+                playersInfo.appendChild(card);
+            }
+
+            if (playerCount === 0) {
+                if (gameState === 'waiting') {
+                    statusText.textContent = 'Aguardando jogadores conectarem a placa...';
+                    statusText.className = 'text-wait';
+                    startBtn.style.display = 'none';
+                }
+            } else {
+                if ((gameState === 'waiting' || gameState === 'ready')) {
+                    gameState = 'ready';
+                    statusText.textContent = 'Pronto para jogar!';
+                    statusText.className = 'text-success';
+                    startBtn.style.display = 'inline-block';
+                    startBtn.textContent = 'Start Game';
+                }
+            }
+        }
+
+        // Start polling loop
+        fetchState();
+    </script>
+</body>
+
+</html>
