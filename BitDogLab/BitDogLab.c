@@ -10,7 +10,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#define SERVER_IP "192.168.1.11" // Substitua pelo IP que você pegou no terminal
+#define SERVER_IP "192.168.0.11" // Substitua pelo IP que você pegou no terminal
 #define SERVER_PORT 8000
 
 char my_player_id[15] = "x"; // nome do player
@@ -112,8 +112,8 @@ void send_joystick_state() {
 }
 
 int connect_wifi() {
-  const char *ssid = "brisa-4208840"; // SEU_WIFI
-  const char *password = "wydqhiiw";  // SUA_SENHA
+  const char *ssid = "brisa-4674223"; // SEU_WIFI
+  const char *password = "lklgrwwk";  // SUA_SENHA
 
   if (cyw43_arch_init()) {
     ssd1306_clear();
